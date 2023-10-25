@@ -5,7 +5,14 @@ require('dotenv').config()
 const PORT = process.env.PORT;
 
 const app = express()
-app.use(cors())
+
+const corsOptions ={
+    origin:'*', 
+    credentials:true,
+    optionSuccessStatus:200,
+}
+
+app.use(cors(corsOptions))
 app.use(express.json())
 
 const db = mysql.createConnection({
