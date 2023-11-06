@@ -6,10 +6,11 @@ const PORT = process.env.PORT;
 
 const app = express()
 
-const corsOptions ={
-    origin:'*', 
-    credentials:true,
-    optionSuccessStatus:200,
+const corsOptions = {
+    origin :'*', 
+    methods : "GET,HEAD,PUT,PATCH,POST,DELETE",
+    credentials :true,
+    optionSuccessStatus : 200,
 }
 
 app.use(cors(corsOptions))
@@ -31,11 +32,11 @@ app.listen(PORT, () => {
     })
 })
 
-app.get('/', (req, res) => {
+app.get('/', cors(corsOptions), (req, res) => {
     return res.json('Backend');
 })
 
-app.get('/users', (req, res) => {
+app.get('/users', cors(corsOptions), (req, res) => {
     const sql = "SELECT * FROM users;"
     db.query(sql, (err, data) => {
         if(err) throw err;
@@ -43,7 +44,7 @@ app.get('/users', (req, res) => {
     })
 })
 
-app.post('/register', (req, res) => {
+app.post('/register', cors(corsOptions), (req, res) => {
     const { name } = req.body
     const { pass } = req.body
     const sql = `INSERT INTO users (username, userpass, userlib) VALUES ('${name}', '${pass}', '{\"library\": []}');`
@@ -53,7 +54,7 @@ app.post('/register', (req, res) => {
     })
 })
 
-app.post('/:user/setlib', (req, res) => {
+app.post('/:user/setlib', cors(corsOptions), (req, res) => {
     const { user } = req.params
     const { bodylib } = req.body
     const newlib = JSON.stringify({ "library": bodylib })
