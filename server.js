@@ -65,3 +65,44 @@ app.post('/:user/setlib', cors(corsOptions), (req, res) => {
         return
     })
 })
+
+app.route('/:user/addBook', cors(corsOptions), (req, res) => {
+    const user = req.params.user
+    const { book } = req.body
+    const userlib = null
+    .get((req, res) => {
+        const sql = `SELECT '${user}' FROM users;`
+        db.query(sql, (err, data) => {
+            if(err) throw err;
+            userlib = res.json(data).library
+        })
+    })
+    userlib.push(book)
+    .post((req, res) => {
+        const sql =  `UPDATE users SET userlib = '${userlib}' WHERE username = '${user}'`
+        db.query(sql, (err, data) => {
+            if(err) throw err;
+            return
+        })
+    })
+})
+
+// app.route('/:user/delBook/:bookname', cors(corsOptions), (req, res) => {
+//     const user = req.params.user
+//     const book = req.params.bookname
+//     const userlib = null
+//     .get((req, res) => {
+//         const sql = `SELECT '${user}' FROM users;`
+//         db.query(sql, (err, data) => {
+//             if(err) throw err;
+//             userlib = res.json(data).library
+//         })
+//     })
+//     .post((req, res) => {
+//         const sql =  `UPDATE users SET userlib = '${userlib}' WHERE username = '${user}'`
+//         db.query(sql, (err, data) => {
+//             if(err) throw err;
+//             return
+//         })
+//     })
+// })
