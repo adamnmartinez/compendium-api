@@ -21,11 +21,11 @@ const db = mysql.createConnection({
     user: process.env.SQL_USER,
     password: process.env.SQL_PASS,
     database: process.env.SQL_DB,
-    port: 3307
+    port: 3306
 })
 
 app.listen(PORT, () => {
-    console.log(`Listening: https://${process.env.HOST}:${PORT}`)
+    console.log(`Listening: http://${process.env.HOST}:${PORT}`)
     db.connect((err) => {
         if(err) throw err;
         console.log('DATABASE CONNECTED');
@@ -47,62 +47,194 @@ app.get('/users', cors(corsOptions), (req, res) => {
 app.post('/register', cors(corsOptions), (req, res) => {
     const { name } = req.body
     const { pass } = req.body
-    const sql = `INSERT INTO users (username, userpass, userlib) VALUES ('${name}', '${pass}', '{\"library\": []}');`
-    db.query(sql, (err, data) => {
+    const sql = `INSERT INTO users (username, password, userlib) VALUES (?, ?, '{\"library\": []}');`
+    let values = [name, pass]
+    db.query(sql, values, (err, data) => {
         if(err) throw err;
         return
     })
 })
 
-app.post('/:user/setlib', cors(corsOptions), (req, res) => {
-    const { user } = req.params
-    const { bodylib } = req.body
-    const newlib = JSON.stringify({ "library": bodylib })
-    console.log(newlib)
-    const sql =  `UPDATE users SET userlib = '${newlib}' WHERE username = '${user}'`
-    db.query(sql, (err, data) => {
-        if(err) throw err;
-        return
-    })
+app.post('/:user/addBook', cors(corsOptions), (req, res) => {
+    const user = req.params.user;
+    const book = req.body;
+    // Get the user's library
+    const getSql = `SELECT userlib FROM users WHERE username = '${user}';`;
+    db.query(getSql, (getErr, getData) => {
+        if(getErr) throw getErr;
+        let userlib = getData[0].userlib;
+
+        // Add the new book to the library
+        userlib.library.push(book);
+
+        // Update the user's library in the database
+        const updateSql = `UPDATE users SET userlib = ? WHERE username = ?;`
+        let values = [JSON.stringify(userlib), user]
+        db.query(updateSql, values, (updateErr, updateData) => {
+            if(updateErr) {
+                console.error('An error occurred:', updateErr.message);
+                res.status(500).json({message: "Internal server error"});
+                return;
+            }
+            res.json({message: "Book added successfully"});
+        });
+    });
+});
+
+app.post('/:user/delBook/:uuid', cors(corsOptions), (req, res) => {
+    const user = req.params.user;
+    const id = req.params.uuid
+    // Get the user's library
+    const getSql = `SELECT userlib FROM users WHERE username = '${user}';`;
+    db.query(getSql, (getErr, getData) => {
+        if(getErr) throw getErr;
+        let userlib = getData[0].userlib;
+        // Delete the new book from the library
+        userlib.library.forEach(element => {
+            if (element.uuid == id) {
+                userlib.library.splice(userlib.library.indexOf(element), 1)
+            }
+        });
+        // Update the user's library in the database
+        const updateSql = `UPDATE users SET userlib = ? WHERE username = ?;`
+        let values = [JSON.stringify(userlib), user]
+        db.query(updateSql, values, (updateErr, updateData) => {
+            if(updateErr) {
+                console.error('An error occurred:', updateErr.message);
+                res.status(500).json({message: "Internal server error"});
+                return;
+            }
+            res.json({message: "Book deleted successfully"});
+        });
+    });
+});
+
+app.post('/:user/modBook/:uuid', cors(corsOptions), (req, res) => {
+    const user = req.params.user;
+    const id = req.params.uuid;
+    const book = req.body
+    // Get the user's library
+    const getSql = `SELECT userlib FROM users WHERE username = '${user}';`;
+    db.query(getSql, (getErr, getData) => {
+        if(getErr) throw getErr;
+        let userlib = getData[0].userlib;
+
+        //Splice element with corresponding ID with new Book object
+        userlib.library.forEach(element => {
+            if (element.uuid == id) {
+                userlib.library[userlib.library.indexOf(element)] = book
+            }
+        });
+
+        // Update the user's library in the database
+        const updateSql = `UPDATE users SET userlib = ? WHERE username = ?;`
+        let values = [JSON.stringify(userlib), user]
+        db.query(updateSql, values, (updateErr, updateData) => {
+            if(updateErr) {
+                console.error('An error occurred:', updateErr.message);
+                res.status(500).json({message: "Internal server error"});
+                return;
+            }
+            res.json({message: "Book modified successfully"});
+        });
+    });
+});
+
+app.post('/:user/addNote/:uuid', cors(corsOptions), (req, res) => {
+    const user = req.params.user;
+    const id = req.params.uuid;
+    const note = req.body
+    // Get the user's library
+    const getSql = `SELECT userlib FROM users WHERE username = '${user}';`;
+    db.query(getSql, (getErr, getData) => {
+        if(getErr) throw getErr;
+        let userlib = getData[0].userlib;
+
+        userlib.library.forEach(element => {
+            if (element.uuid == id) {
+                element.notes.push(note)
+            }
+        });
+
+        // Update the user's library in the database
+        const updateSql = `UPDATE users SET userlib = ? WHERE username = ?;`
+        let values = [JSON.stringify(userlib), user]
+        db.query(updateSql, values, (updateErr, updateData) => {
+            if(updateErr) {
+                console.error('An error occurred:', updateErr.message);
+                res.status(500).json({message: "Internal server error"});
+                return;
+            }
+            res.json({message: "Book modified successfully"});
+        });
+    });
 })
 
-app.route('/:user/addBook', cors(corsOptions), (req, res) => {
-    const user = req.params.user
-    const { book } = req.body
-    const userlib = null
-    .get((req, res) => {
-        const sql = `SELECT '${user}' FROM users;`
-        db.query(sql, (err, data) => {
-            if(err) throw err;
-            userlib = res.json(data).library
-        })
-    })
-    userlib.push(book)
-    .post((req, res) => {
-        const sql =  `UPDATE users SET userlib = '${userlib}' WHERE username = '${user}'`
-        db.query(sql, (err, data) => {
-            if(err) throw err;
-            return
-        })
-    })
+app.post('/:user/delNote/:book_uuid/:note_uuid', cors(corsOptions), (req, res) => {
+    const user = req.params.user;
+    const book_id = req.params.book_uuid;
+    const note_id = req.params.note_uuid
+    // Get the user's library
+    const getSql = `SELECT userlib FROM users WHERE username = '${user}';`;
+    db.query(getSql, (getErr, getData) => {
+        if(getErr) throw getErr;
+        let userlib = getData[0].userlib;
+
+        userlib.library.forEach(element => {
+            if (element.uuid == book_id) {
+                element.notes.forEach(note => {
+                    if (note.uuid == note_id) {
+                        element.notes.splice(element.notes.indexOf(note), 1)
+                    }
+                })
+            }
+        });
+
+        // Update the user's library in the database
+        const updateSql = `UPDATE users SET userlib = ? WHERE username = ?;`
+        let values = [JSON.stringify(userlib), user]
+        db.query(updateSql, values, (updateErr, updateData) => {
+            if(updateErr) {
+                console.error('An error occurred:', updateErr.message);
+                res.status(500).json({message: "Internal server error"});
+                return;
+            }
+            res.json({message: "Book modified successfully"});
+        });
+    });
 })
 
-// app.route('/:user/delBook/:bookname', cors(corsOptions), (req, res) => {
-//     const user = req.params.user
-//     const book = req.params.bookname
-//     const userlib = null
-//     .get((req, res) => {
-//         const sql = `SELECT '${user}' FROM users;`
-//         db.query(sql, (err, data) => {
-//             if(err) throw err;
-//             userlib = res.json(data).library
-//         })
-//     })
-//     .post((req, res) => {
-//         const sql =  `UPDATE users SET userlib = '${userlib}' WHERE username = '${user}'`
-//         db.query(sql, (err, data) => {
-//             if(err) throw err;
-//             return
-//         })
-//     })
-// })
+app.post('/:user/modNote/:book_uuid/:note_uuid', cors(corsOptions), (req, res) => {
+    const user = req.params.user;
+    const book_id = req.params.book_uuid;
+    const note_id = req.params.note_uuid
+    const modified = req.body
+    // Get the user's library
+    const getSql = `SELECT userlib FROM users WHERE username = '${user}';`;
+    db.query(getSql, (getErr, getData) => {
+        if(getErr) throw getErr;
+        let userlib = getData[0].userlib;
+
+        userlib.library.forEach(element => {
+            if (element.uuid == book_id) {
+                element.notes.forEach(note => {
+                    if (note.uuid == note_id) {
+                        element.notes.splice(element.notes.indexOf(note), 1, modified)
+                    }
+                })
+            }
+        });
+
+        // Update the user's library in the database
+        const updateSql = `UPDATE users SET userlib = ? WHERE username = ?;`
+        let values = [JSON.stringify(userlib), user]
+        db.query(updateSql, values, (updateErr, updateData) => {
+            if(updateErr) {
+                console.error('An error occurred:', updateErr.message);
+                res.status(500).json({message: "Internal server error"});
+                return;
+            }
+            res.json({message: "Book modified successfully"});
+        });
+    });
+})
