@@ -16,7 +16,7 @@ const corsOptions = {
 app.use(cors(corsOptions))
 app.use(express.json())
 
-const db = mysql.createConnection({
+const db = mysql.createPool({
     host: process.env.HOST,
     user: process.env.SQL_USER,
     password: process.env.SQL_PASS,
@@ -24,14 +24,14 @@ const db = mysql.createConnection({
     port: 3306,
     waitForConnections: true,
     connectTimeout: 60000,
-    // connectionLimit: 10,
-    // keepAliveInitialDelay: 10000,
-    // enableKeepAlive: true,
+    connectionLimit: 10,
+    keepAliveInitialDelay: 10000,
+    enableKeepAlive: true,
 })
 
 app.listen(PORT, () => {
     console.log(`Listening: http://${process.env.HOST}:${PORT}`)
-    db.connect((err) => {
+    db.getConnection((err) => {
         if(err) throw err;
         console.log('DATABASE CONNECTED');
     })
