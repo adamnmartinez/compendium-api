@@ -56,6 +56,7 @@ app.post('/register', cors(corsOptions), (req, res) => {
     let values = [id, password]
     db.query(sql, values, (err, data) => {
         if(err) throw err
+        console.log("User registered.")
         return
     })
 })
@@ -65,11 +66,11 @@ app.post('/userExists?', (req, res) => {
     const sql = `SELECT id FROM users WHERE username = "${username}"`
     db.query(sql, (err, data) => {
         if (data.length == 0) {
-            console.log("user does not exist")
+            console.log(`User with name ${username} does not exist`)
             res.json = ({ exists : false })
             return
         }
-        console.log("user exists")
+        console.log(`User ${username} exists`)
         res.json({ exists : true })
         return
     })
@@ -82,6 +83,7 @@ app.post('/initUser', cors(corsOptions), (req, res) => {
     let values = [id, name]
     db.query(sql, values, (err, data) => {
         if(err) throw err
+        console.log("Initalized user library.")
         return
     })
 })
@@ -93,7 +95,7 @@ app.post('/authenticate', cors(corsOptions), (req, res) => {
     db.query(id_sql, (err, data) => {
         if (err) throw err
         if (data.length == 0){
-            console.log("No such user exists")
+            console.log("Could not authenticate: No such user exists")
             res.json({ valid : false })
             return
         }
@@ -102,11 +104,12 @@ app.post('/authenticate', cors(corsOptions), (req, res) => {
         db.query(auth_sql, (_err, _data) => {
             if (_err) throw _err
             if (_data.length == 0){
-                console.log("Username exists but no password registered")
+                console.log("Could not authenticate: Username exists but no password registered")
                 res.json({ valid : false })
                 return
             }
-            console.log("found user")
+            console.log("Authenticate: Found user")
+            console.log(` - Valid Password: ${_data[0].password == password}`)
             res.json({ 
                 valid : _data[0].password == password,
                 id : uid
