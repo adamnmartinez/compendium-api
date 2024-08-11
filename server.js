@@ -88,6 +88,7 @@ app.post('/initUser', (req, res) => {
     db.query(sql, values, (err, data) => {
         if(err) throw err
         console.log("Initalized user library.")
+        res.json({success:true})
         return
     })
 })
