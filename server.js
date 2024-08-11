@@ -49,7 +49,7 @@ app.get('/users', cors(corsOptions), (req, res) => {
     })
 })
 
-app.post('/register', cors(corsOptions), (req, res) => {
+app.post('/register', (req, res) => {
     const { id } = req.body
     const { password } = req.body
     const sql = `INSERT INTO users (id, password) VALUES (?, ?);`
@@ -76,7 +76,7 @@ app.post('/userExists?', (req, res) => {
     })
 })
 
-app.post('/initUser', cors(corsOptions), (req, res) => {
+app.post('/initUser', (req, res) => {
     const { id } = req.body
     const { name } = req.body
     const sql = `INSERT INTO users (id, username, userlib) VALUES (?, ?, '{\"library\": []}');`
@@ -88,7 +88,7 @@ app.post('/initUser', cors(corsOptions), (req, res) => {
     })
 })
 
-app.post('/authenticate', cors(corsOptions), (req, res) => {
+app.post('/authenticate', (req, res) => {
     const { username } = req.body
     const { password } = req.body
     const id_sql = `SELECT id FROM users WHERE username = "${username}"`
