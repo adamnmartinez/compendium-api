@@ -67,7 +67,7 @@ app.post('/userExists?', (req, res) => {
     db.query(sql, (err, data) => {
         if (data.length == 0) {
             console.log(`User with name ${username} does not exist`)
-            res.json = ({ exists : false })
+            res.json({ exists : false })
             return
         }
         console.log(`User ${username} exists`)
