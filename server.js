@@ -30,7 +30,7 @@ const db = mysql.createPool({
 })
 
 app.listen(PORT, () => {
-    console.log(`Listening: http://${process.env.HOST}:${PORT}`)
+    console.log(`Listening on port ${PORT}`)
     db.getConnection((err) => {
         if(err) throw err;
         console.log('DATABASE CONNECTED');
@@ -52,16 +52,21 @@ app.get('/users', (req, res) => {
 app.post('/register', (req, res) => {
     const { id } = req.body
     const { password } = req.body
-    const sql = `INSERT INTO users (id, password) VALUES (?, ?);`
-    let values = [id, password]
-    db.query(sql, values, (err, data) => {
-        if(err) {
-            res.json({ success: false })
-            throw err
+    const { username } = req.body
+    const reg_sql = `INSERT INTO registry (id, password) VALUES (?, ?);`
+    let reg_values = [id, password]
+    db.query(reg_sql, reg_values, (r_err, r_data) => {
+        if(r_err) {
+            throw r_err
         }
-        console.log("User registered.")
-        res.json({ success: true })
-        return
+        const lib_sql = `INSERT INTO users (id, username, userlib) VALUES (?, ?, '{\"library\": []}');`
+        let lib_values = [id, username]
+        db.query(lib_sql, lib_values, (l_err, l_data) => {
+            if(l_err) throw l_err
+            console.log("Registration: Registration Complete.")
+            res.json({message: "User successfully created"})
+            return;
+        })
     })
 })
 
@@ -74,21 +79,8 @@ app.post('/userExists?', (req, res) => {
             res.json({ exists : false })
             return
         }
-        console.log(`User ${username} exists`)
+        console.log(`User ${username} is registered`)
         res.json({ exists : true })
-        return
-    })
-})
-
-app.post('/initUser', (req, res) => {
-    const { id } = req.body
-    const { name } = req.body
-    const sql = `INSERT INTO users (id, username, userlib) VALUES (?, ?, '{\"library\": []}');`
-    let values = [id, name]
-    db.query(sql, values, (err, data) => {
-        if(err) throw err
-        console.log("Initalized user library.")
-        res.json({success:true})
         return
     })
 })
@@ -100,7 +92,7 @@ app.post('/authenticate', (req, res) => {
     db.query(id_sql, (err, data) => {
         if (err) throw err
         if (data.length == 0){
-            console.log("Could not authenticate: No such user exists")
+            console.log("Authenticate: No such user exists")
             res.json({ valid : false })
             return
         }
@@ -109,12 +101,11 @@ app.post('/authenticate', (req, res) => {
         db.query(auth_sql, (_err, _data) => {
             if (_err) throw _err
             if (_data.length == 0){
-                console.log("Could not authenticate: Username exists but no password registered")
+                console.log("Authenticate: Username exists but no password registered")
                 res.json({ valid : false })
                 return
             }
             console.log("Authenticate: Found user")
-            console.log(` - Valid Password: ${_data[0].password == password}`)
             res.json({ 
                 valid : _data[0].password == password,
                 id : uid
