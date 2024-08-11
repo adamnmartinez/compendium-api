@@ -37,11 +37,11 @@ app.listen(PORT, () => {
     })
 })
 
-app.get('/', cors(corsOptions), (req, res) => {
+app.get('/', (req, res) => {
     return res.json('Backend');
 })
 
-app.get('/users', cors(corsOptions), (req, res) => {
+app.get('/users', (req, res) => {
     const sql = "SELECT * FROM users;"
     db.query(sql, (err, data) => {
         if(err) throw err;
@@ -119,7 +119,7 @@ app.post('/authenticate', (req, res) => {
     })
 })
 
-app.post('/:user/addBook', cors(corsOptions), (req, res) => {
+app.post('/:user/addBook', (req, res) => {
     const user = req.params.user;
     const book = req.body;
     // Get the user's library
@@ -145,7 +145,7 @@ app.post('/:user/addBook', cors(corsOptions), (req, res) => {
     });
 });
 
-app.post('/:user/delBook/:uuid', cors(corsOptions), (req, res) => {
+app.post('/:user/delBook/:uuid', (req, res) => {
     const user = req.params.user;
     const id = req.params.uuid
     // Get the user's library
@@ -173,7 +173,7 @@ app.post('/:user/delBook/:uuid', cors(corsOptions), (req, res) => {
     });
 });
 
-app.post('/:user/modBook/:uuid', cors(corsOptions), (req, res) => {
+app.post('/:user/modBook/:uuid', (req, res) => {
     const user = req.params.user;
     const id = req.params.uuid;
     const book = req.body
@@ -204,7 +204,7 @@ app.post('/:user/modBook/:uuid', cors(corsOptions), (req, res) => {
     });
 });
 
-app.post('/:user/addNote/:uuid', cors(corsOptions), (req, res) => {
+app.post('/:user/addNote/:uuid', (req, res) => {
     const user = req.params.user;
     const id = req.params.uuid;
     const note = req.body
@@ -234,7 +234,7 @@ app.post('/:user/addNote/:uuid', cors(corsOptions), (req, res) => {
     });
 })
 
-app.post('/:user/delNote/:book_uuid/:note_uuid', cors(corsOptions), (req, res) => {
+app.post('/:user/delNote/:book_uuid/:note_uuid', (req, res) => {
     const user = req.params.user;
     const book_id = req.params.book_uuid;
     const note_id = req.params.note_uuid
@@ -268,7 +268,7 @@ app.post('/:user/delNote/:book_uuid/:note_uuid', cors(corsOptions), (req, res) =
     });
 })
 
-app.post('/:user/modNote/:book_uuid/:note_uuid', cors(corsOptions), (req, res) => {
+app.post('/:user/modNote/:book_uuid/:note_uuid', (req, res) => {
     const user = req.params.user;
     const book_id = req.params.book_uuid;
     const note_id = req.params.note_uuid
