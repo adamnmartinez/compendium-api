@@ -55,8 +55,12 @@ app.post('/register', (req, res) => {
     const sql = `INSERT INTO users (id, password) VALUES (?, ?);`
     let values = [id, password]
     db.query(sql, values, (err, data) => {
-        if(err) throw err
+        if(err) {
+            res.json({ success: false })
+            throw err
+        }
         console.log("User registered.")
+        res.json({ success: true })
         return
     })
 })
