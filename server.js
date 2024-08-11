@@ -50,13 +50,69 @@ app.get('/users', cors(corsOptions), (req, res) => {
 })
 
 app.post('/register', cors(corsOptions), (req, res) => {
-    const { name } = req.body
-    const { pass } = req.body
-    const sql = `INSERT INTO users (username, password, userlib) VALUES (?, ?, '{\"library\": []}');`
-    let values = [name, pass]
+    const { id } = req.body
+    const { password } = req.body
+    const sql = `INSERT INTO users (id, password) VALUES (?, ?);`
+    let values = [id, password]
     db.query(sql, values, (err, data) => {
-        if(err) throw err;
+        if(err) throw err
         return
+    })
+})
+
+app.post('/userExists?', (req, res) => {
+    const { username } = req.body
+    const sql = `SELECT id FROM users WHERE username = "${username}"`
+    db.query(sql, (err, data) => {
+        if (data.length == 0) {
+            console.log("user does not exist")
+            res.json = ({ exists : false })
+            return
+        }
+        console.log("user exists")
+        res.json({ exists : true })
+        return
+    })
+})
+
+app.post('/initUser', cors(corsOptions), (req, res) => {
+    const { id } = req.body
+    const { name } = req.body
+    const sql = `INSERT INTO users (id, username, userlib) VALUES (?, ?, '{\"library\": []}');`
+    let values = [id, name]
+    db.query(sql, values, (err, data) => {
+        if(err) throw err
+        return
+    })
+})
+
+app.post('/authenticate', cors(corsOptions), (req, res) => {
+    const { username } = req.body
+    const { password } = req.body
+    const id_sql = `SELECT id FROM users WHERE username = "${username}"`
+    db.query(id_sql, (err, data) => {
+        if (err) throw err
+        if (data.length == 0){
+            console.log("No such user exists")
+            res.json({ valid : false })
+            return
+        }
+        let uid = data[0].id
+        const auth_sql = `SELECT password FROM registry WHERE id = "${uid}"`
+        db.query(auth_sql, (_err, _data) => {
+            if (_err) throw _err
+            if (_data.length == 0){
+                console.log("Username exists but no password registered")
+                res.json({ valid : false })
+                return
+            }
+            console.log("found user")
+            res.json({ 
+                valid : _data[0].password == password,
+                id : uid
+            })
+            return
+        })
     })
 })
 
