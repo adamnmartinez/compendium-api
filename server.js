@@ -337,9 +337,6 @@ app.post("/account", createTokenChain(), (req, res) => {
         lib_sql = `SELECT library FROM userdata WHERE id = ?`;
         lib_values = [decoded.id]
 
-        // console.log("[PROTECTED/DEBUG] Decrypted payload")
-        // console.log(decoded)
-
         db.query(lib_sql, lib_values, (q_err, q_res) => {
             if (q_err) {
                 console.log(
@@ -656,8 +653,6 @@ app.post("/account/library/edit", createTokenChain(), (req, res) => {
       try {
         lib_sql = `SELECT library FROM userdata WHERE id = ?`;
         lib_values = [decoded.id]
-        // console.log("[LIBRARY/EDIT/DEBUG] Decrypted payload")
-        // console.log(decoded)
 
         db.query(lib_sql, lib_values, (q_err, q_res) => {
             if (q_err) {
@@ -680,9 +675,6 @@ app.post("/account/library/edit", createTokenChain(), (req, res) => {
                   message: "Could Not Find User's Library.",
                 });
             } else {
-                // console.log("[LIBRARY/EDIT] Found user library, searching for book...")
-                // console.log("[LIBRARY/EDIT/DEBUG] Reading user library: ")
-                // console.log(q_res[0].library)
 
                 newlibrary = q_res[0].library
 
@@ -701,9 +693,9 @@ app.post("/account/library/edit", createTokenChain(), (req, res) => {
                     return res
                     .status(404)
                     .json({ message: `Could not find the requested book.`, library: newlibrary, user: decoded.user, id: decoded.id });
-                } else {
-                    newlibrary.splice(removeIndex, 1)
                 }
+                
+                newlibrary.splice(removeIndex, 1)
 
                 newlibrary[editIndex] = modified
 
@@ -748,101 +740,403 @@ app.post("/account/library/edit", createTokenChain(), (req, res) => {
     });
 });
 
-app.post('/:user/addNote/:uuid', (req, res) => {
-    const user = req.params.user;
-    const id = req.params.uuid;
-    const note = req.body
-    // Get the user's library
-    const getSql = `SELECT userlib FROM users WHERE username = '${user}';`;
-    db.query(getSql, (getErr, getData) => {
-        if(getErr) throw getErr;
-        let userlib = getData[0].userlib;
+app.post("/account/library/entry/add", createTokenChain(), (req, res) => {
+    const { token } = req.body;
+    const { bookID } = req.body;
+    const { note } = req.body;
 
-        userlib.library.forEach(element => {
-            if (element.uuid == id) {
-                element.notes.push(note)
-            }
-        });
+    const validation = validationResult(req);
+  
+    if (!validation.isEmpty()) {
+      console.log("[LIBRARY/ENTRY/ADD] User cannot access resource, bad token.");
+      return res.status(400).json({
+        error: "Bad Request",
+        message: `${validation.array()[0].msg}`,
+      });
+    }
+  
+    jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+      if (err) {
+        if (err.name === "TokenExpiredError") {
+          return res.status(403).json({
+            error: "Unauthorized",
+            message:
+              "Could not authorize user, expired token. Please log in again.",
+          });
+        } else if (err.name === "JsonWebTokenError") {
+          return res.status(403).json({
+            error: "Unauthorized",
+            message:
+              "Could not authorize user, invalid token. Please log in again.",
+          });
+        } else {
+          return res.status(500).json({
+            error: "Internal Server Error",
+            message: "An unexpected error occured.",
+          });
+        }
+      }
 
-        // Update the user's library in the database
-        const updateSql = `UPDATE users SET userlib = ? WHERE username = ?;`
-        let values = [JSON.stringify(userlib), user]
-        db.query(updateSql, values, (updateErr, updateData) => {
-            if(updateErr) {
-                console.error('An error occurred:', updateErr.message);
-                res.status(500).json({message: "Internal server error"});
+      try {
+        lib_sql = `SELECT library FROM userdata WHERE id = ?`;
+        lib_values = [decoded.id]
+
+        db.query(lib_sql, lib_values, (q_err, q_res) => {
+            if (q_err) {
+                console.log(
+                  "[LIBRARY/ENTRY/ADD] User could not be authenticated. Database Error.",
+                );
+                switch (q_err.errno) {
+                  default:
+                    res.status(500).json({
+                      error: "Internal Server Error",
+                      message: "An unexpected error occured.",
+                    });
+                    break;
+                }
                 return;
-            }
-            res.json({message: "Book modified successfully"});
-        });
-    });
-})
+            } else if (q_res.length == 0) {
+                console.log("[LIBRARY/ENTRY/ADD] No such user found");
+                return res.status(404).json({
+                  error: "Not Found",
+                  message: "Could Not Find User's Library.",
+                });
+            } else {
+                let newlibrary = q_res[0].library
+                let editIndex = -1
 
-app.post('/:user/delNote/:book_uuid/:note_uuid', (req, res) => {
-    const user = req.params.user;
-    const book_id = req.params.book_uuid;
-    const note_id = req.params.note_uuid
-    // Get the user's library
-    const getSql = `SELECT userlib FROM users WHERE username = '${user}';`;
-    db.query(getSql, (getErr, getData) => {
-        if(getErr) throw getErr;
-        let userlib = getData[0].userlib;
-
-        userlib.library.forEach(element => {
-            if (element.uuid == book_id) {
-                element.notes.forEach(note => {
-                    if (note.uuid == note_id) {
-                        element.notes.splice(element.notes.indexOf(note), 1)
+                for (let i = 0; i < newlibrary.length; i++) {
+                    if (newlibrary[i].uuid == bookID) {
+                        editIndex = i
+                        break
                     }
-                })
-            }
-        });
+                }
 
-        // Update the user's library in the database
-        const updateSql = `UPDATE users SET userlib = ? WHERE username = ?;`
-        let values = [JSON.stringify(userlib), user]
-        db.query(updateSql, values, (updateErr, updateData) => {
-            if(updateErr) {
-                console.error('An error occurred:', updateErr.message);
-                res.status(500).json({message: "Internal server error"});
-                return;
-            }
-            res.json({message: "Book modified successfully"});
-        });
-    });
-})
+                if (editIndex < 0) {
+                    return res.status(404).json({
+                        error: "Not Found",
+                        message: "Could Not Find User's Library.",
+                    });
+                }
 
-app.post('/:user/modNote/:book_uuid/:note_uuid', (req, res) => {
-    const user = req.params.user;
-    const book_id = req.params.book_uuid;
-    const note_id = req.params.note_uuid
-    const modified = req.body
-    // Get the user's library
-    const getSql = `SELECT userlib FROM users WHERE username = '${user}';`;
-    db.query(getSql, (getErr, getData) => {
-        if(getErr) throw getErr;
-        let userlib = getData[0].userlib;
+                newlibrary[editIndex].notes.push(note)
+ 
+                add_sql = `UPDATE userdata SET library = ? WHERE id = ?`
+                add_values = [JSON.stringify(newlibrary), decoded.id]
 
-        userlib.library.forEach(element => {
-            if (element.uuid == book_id) {
-                element.notes.forEach(note => {
-                    if (note.uuid == note_id) {
-                        element.notes.splice(element.notes.indexOf(note), 1, modified)
+                db.query(add_sql, add_values, (r_err, r_res) => {
+                    if (r_err) {
+                        console.log(
+                          "[LIBRARY/ENTRY/ADD] User could not be authenticated. Database Error.",
+                        );
+                        switch (r_err.errno) {
+                          default:
+                            res.status(500).json({
+                              error: "Internal Server Error",
+                              message: "An unexpected error occured.",
+                            });
+                            break;
+                        }
+                        return;
+                    } else if (r_res.length == 0) {
+                        console.log("[LIBRARY/ENTRY/ADD] Couldn't find a library to update.");
+                        return res.status(404).json({
+                          error: "Not Found",
+                          message: "Could Not Find User's Library.",
+                        });
+                    } else {
+                        console.log("[LIBRARY/ENTRY/ADD] Library updated successfully.")
+                        return res
+                        .status(200)
+                        .json({ message: `User identity verified, library updated.`, library: newlibrary, user: decoded.user, id: decoded.id });
                     }
-                })
+                }) 
             }
-        });
-
-        // Update the user's library in the database
-        const updateSql = `UPDATE users SET userlib = ? WHERE username = ?;`
-        let values = [JSON.stringify(userlib), user]
-        db.query(updateSql, values, (updateErr, updateData) => {
-            if(updateErr) {
-                console.error('An error occurred:', updateErr.message);
-                res.status(500).json({message: "Internal server error"});
-                return;
-            }
-            res.json({message: "Book modified successfully"});
-        });
+        })
+      } catch {
+        return res.status(500).json({
+            error: "Internal Server Error",
+            message: "An unexpected error occured.",
+          });
+      }
     });
-})
+});
+
+app.post("/account/library/entry/remove", createTokenChain(), (req, res) => {
+    const { token } = req.body;
+    const { bookID } = req.body;
+    const { noteID } = req.body;
+
+    const validation = validationResult(req);
+  
+    if (!validation.isEmpty()) {
+      console.log("[LIBRARY/ENTRY/ADD] User cannot access resource, bad token.");
+      return res.status(400).json({
+        error: "Bad Request",
+        message: `${validation.array()[0].msg}`,
+      });
+    }
+  
+    jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+      if (err) {
+        if (err.name === "TokenExpiredError") {
+          return res.status(403).json({
+            error: "Unauthorized",
+            message:
+              "Could not authorize user, expired token. Please log in again.",
+          });
+        } else if (err.name === "JsonWebTokenError") {
+          return res.status(403).json({
+            error: "Unauthorized",
+            message:
+              "Could not authorize user, invalid token. Please log in again.",
+          });
+        } else {
+          return res.status(500).json({
+            error: "Internal Server Error",
+            message: "An unexpected error occured.",
+          });
+        }
+      }
+
+      try {
+        lib_sql = `SELECT library FROM userdata WHERE id = ?`;
+        lib_values = [decoded.id]
+
+        db.query(lib_sql, lib_values, (q_err, q_res) => {
+            if (q_err) {
+                console.log(
+                  "[LIBRARY/ENTRY/ADD] User could not be authenticated. Database Error.",
+                );
+                switch (q_err.errno) {
+                  default:
+                    res.status(500).json({
+                      error: "Internal Server Error",
+                      message: "An unexpected error occured.",
+                    });
+                    break;
+                }
+                return;
+            } else if (q_res.length == 0) {
+                console.log("[LIBRARY/ENTRY/ADD] No such user found");
+                return res.status(404).json({
+                  error: "Not Found",
+                  message: "Could Not Find User's Library.",
+                });
+            } else {
+                let newlibrary = q_res[0].library
+                let editIndex = -1
+                let removeIndex = -1
+
+                for (let i = 0; i < newlibrary.length; i++) {
+                    if (newlibrary[i].uuid == bookID) {
+                        editIndex = i
+                        break
+                    }
+                }
+
+                if (editIndex < 0) {
+                    return res.status(404).json({
+                        error: "Not Found",
+                        message: "Could Not Find Book.",
+                    });
+                }
+
+                //console.log(newlibrary[editIndex].notes)
+                //console.log(noteID)
+
+                for (let i = 0; i < newlibrary[editIndex].notes.length; i++) {
+                    if (newlibrary[editIndex].notes[i].uuid == noteID) {
+                        removeIndex = i
+                        break;
+                    }
+                }
+
+                if (removeIndex < 0) {
+                    return res.status(404).json({
+                        error: "Not Found",
+                        message: "Could Not Find Note.",
+                    });
+                }
+
+                newlibrary[editIndex].notes.splice(removeIndex, 1)
+ 
+                add_sql = `UPDATE userdata SET library = ? WHERE id = ?`
+                add_values = [JSON.stringify(newlibrary), decoded.id]
+
+                db.query(add_sql, add_values, (r_err, r_res) => {
+                    if (r_err) {
+                        console.log(
+                          "[LIBRARY/ENTRY/ADD] User could not be authenticated. Database Error.",
+                        );
+                        switch (r_err.errno) {
+                          default:
+                            res.status(500).json({
+                              error: "Internal Server Error",
+                              message: "An unexpected error occured.",
+                            });
+                            break;
+                        }
+                        return;
+                    } else if (r_res.length == 0) {
+                        console.log("[LIBRARY/ENTRY/ADD] Couldn't find a library to update.");
+                        return res.status(404).json({
+                          error: "Not Found",
+                          message: "Could Not Find User's Library.",
+                        });
+                    } else {
+                        console.log("[LIBRARY/ENTRY/ADD] Library updated successfully.")
+                        return res
+                        .status(200)
+                        .json({ message: `User identity verified, library updated.`, library: newlibrary, user: decoded.user, id: decoded.id });
+                    }
+                }) 
+            }
+        })
+      } catch {
+        return res.status(500).json({
+            error: "Internal Server Error",
+            message: "An unexpected error occured.",
+          });
+      }
+    });
+});
+
+app.post("/account/library/entry/edit", createTokenChain(), (req, res) => {
+    const { token } = req.body;
+    const { bookID } = req.body;
+    const { noteID } = req.body
+    const { modified } = req.body;
+
+    const validation = validationResult(req);
+  
+    if (!validation.isEmpty()) {
+      console.log("[LIBRARY/ENTRY/ADD] User cannot access resource, bad token.");
+      return res.status(400).json({
+        error: "Bad Request",
+        message: `${validation.array()[0].msg}`,
+      });
+    }
+  
+    jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+      if (err) {
+        if (err.name === "TokenExpiredError") {
+          return res.status(403).json({
+            error: "Unauthorized",
+            message:
+              "Could not authorize user, expired token. Please log in again.",
+          });
+        } else if (err.name === "JsonWebTokenError") {
+          return res.status(403).json({
+            error: "Unauthorized",
+            message:
+              "Could not authorize user, invalid token. Please log in again.",
+          });
+        } else {
+          return res.status(500).json({
+            error: "Internal Server Error",
+            message: "An unexpected error occured.",
+          });
+        }
+      }
+
+      try {
+        lib_sql = `SELECT library FROM userdata WHERE id = ?`;
+        lib_values = [decoded.id]
+
+        db.query(lib_sql, lib_values, (q_err, q_res) => {
+            if (q_err) {
+                console.log(
+                  "[LIBRARY/ENTRY/ADD] User could not be authenticated. Database Error.",
+                );
+                switch (q_err.errno) {
+                  default:
+                    res.status(500).json({
+                      error: "Internal Server Error",
+                      message: "An unexpected error occured.",
+                    });
+                    break;
+                }
+                return;
+            } else if (q_res.length == 0) {
+                console.log("[LIBRARY/ENTRY/ADD] No such user found");
+                return res.status(404).json({
+                  error: "Not Found",
+                  message: "Could Not Find User's Library.",
+                });
+            } else {
+                let newlibrary = q_res[0].library
+                let editIndex = -1
+                let noteIndex = -1
+
+                for (let i = 0; i < newlibrary.length; i++) {
+                    if (newlibrary[i].uuid == bookID) {
+                        editIndex = i
+                        break
+                    }
+                }
+
+                if (editIndex < 0) {
+                    return res.status(404).json({
+                        error: "Not Found",
+                        message: "Could Not Find Book.",
+                    });
+                }
+
+
+                for (let i = 0; i < newlibrary[editIndex].notes.length; i++) {
+                    if (newlibrary[editIndex].notes[i].uuid == noteID) {
+                        noteIndex = i
+                        break;
+                    }
+                }
+                
+                if (noteIndex < 0) {
+                    return res.status(404).json({
+                        error: "Not Found",
+                        message: "Could Not Find Note.",
+                    });
+                }
+
+                newlibrary[editIndex].notes[noteIndex] = modified
+ 
+                add_sql = `UPDATE userdata SET library = ? WHERE id = ?`
+                add_values = [JSON.stringify(newlibrary), decoded.id]
+
+                db.query(add_sql, add_values, (r_err, r_res) => {
+                    if (r_err) {
+                        console.log(
+                          "[LIBRARY/ENTRY/ADD] User could not be authenticated. Database Error.",
+                        );
+                        switch (r_err.errno) {
+                          default:
+                            res.status(500).json({
+                              error: "Internal Server Error",
+                              message: "An unexpected error occured.",
+                            });
+                            break;
+                        }
+                        return;
+                    } else if (r_res.length == 0) {
+                        console.log("[LIBRARY/ENTRY/ADD] Couldn't find a library to update.");
+                        return res.status(404).json({
+                          error: "Not Found",
+                          message: "Could Not Find User's Library.",
+                        });
+                    } else {
+                        console.log("[LIBRARY/ENTRY/ADD] Library updated successfully.")
+                        return res
+                        .status(200)
+                        .json({ message: `User identity verified, library updated.`, library: newlibrary, user: decoded.user, id: decoded.id });
+                    }
+                }) 
+            }
+        })
+      } catch {
+        return res.status(500).json({
+            error: "Internal Server Error",
+            message: "An unexpected error occured.",
+          });
+      }
+    });
+});
