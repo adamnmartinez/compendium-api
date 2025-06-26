@@ -675,9 +675,7 @@ app.post("/account/library/edit", createTokenChain(), (req, res) => {
                   message: "Could Not Find User's Library.",
                 });
             } else {
-
                 newlibrary = q_res[0].library
-
                 editIndex = -1
 
                 for (let i = 0; i < newlibrary.length; i++) {
@@ -695,7 +693,7 @@ app.post("/account/library/edit", createTokenChain(), (req, res) => {
                     .json({ message: `Could not find the requested book.`, library: newlibrary, user: decoded.user, id: decoded.id });
                 }
                 
-                newlibrary.splice(removeIndex, 1)
+                //newlibrary.splice(removeIndex, 1)
 
                 newlibrary[editIndex] = modified
 
