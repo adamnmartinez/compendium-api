@@ -66,7 +66,7 @@ const createPasswordChain = () =>
     .withMessage("Password must contain at least one lowercase letter.")
     .matches(/[0-9]/)
     .withMessage("Password must contain at least one number.")
-    .matches(/[!@#$%^&*]/)
+    .matches(/[!@#$%^&*_]/)
     .withMessage("Password must contain at least one special character.");
 
 const createTokenChain = () =>
@@ -178,7 +178,10 @@ app.post(
 
                 console.log(`[REGISTER] User Registered.`);
 
-                lib_sql = `INSERT INTO userdata (id, library) VALUES (?, '{\"library\": []}')`;
+                // lib_sql = `INSERT INTO userdata (id, library) VALUES (?, '{\"library\": []}')`;
+
+                lib_sql = `INSERT INTO userdata (id, library) VALUES (?, '[]')`;
+
                 let lib_values = [id];
         
                 db.query(lib_sql, lib_values, (q_err, q_res) => {
